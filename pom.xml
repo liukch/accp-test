@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.liukch</groupId>
+    <artifactId>accp</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>11</java.version>
+
+        <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+        <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
+
+        <vertx.version>3.8.3</vertx.version>
+        <owner.version>1.0.10</owner.version>
+        <awssdk.version>2.10.5</awssdk.version>
+        <lombok.version>1.18.10</lombok.version>
+        <accp.version>1.1.1</accp.version>
+
+
+        <fat.jar.name>accp</fat.jar.name>
+        <main.class>com.liukch.accp.AccpLauncher</main.class>
+        <main.verticle>com.liukch.accp.MainVerticle</main.verticle>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.aeonbits.owner</groupId>
+            <artifactId>owner</artifactId>
+            <version>${owner.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-micrometer-metrics</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>bom</artifactId>
+            <version>${awssdk.version}</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.cryptools</groupId>
+            <artifactId>AmazonCorrettoCryptoProvider</artifactId>
+            <version>${accp.version}</version>
+            <classifier>linux-x86_64</classifier>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>dynamodb</artifactId>
+            <version>${awssdk.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <compilerArgs>
+                        <arg>-Xlint:unchecked</arg>
+                        <arg>-Xlint:deprecation</arg>
+                    </compilerArgs>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>${maven-shade-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <filters>
+                                <filter>
+                                    <artifact>software.amazon.cryptools:AmazonCorrettoCryptoProvider</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <manifestEntries>
+                                        <Main-Class>${main.class}</Main-Class>
+                                        <Main-Verticle>${main.verticle}</Main-Verticle>
+                                        <Project-Version>${project.version}</Project-Version>
+                                        <!--
+                                          Declare shaded jar as Multi-Release jar.
+                                          This resolves warning from StackLocator.java in log4j2 when running on Java >= 9
+                                            "WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impact performance."
+                                          See "JEP 238: Multi-Release JAR Files": https://openjdk.java.net/jeps/238
+                                         -->
+                                        <Multi-Release>true</Multi-Release>
+                                    </manifestEntries>
+                                </transformer>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>META-INF/services/io.vertx.core.spi.VerticleFactory</resource>
+                                </transformer>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>META-INF/services/io.vertx.core.spi.launcher.CommandFactory</resource>
+                                </transformer>
+                            </transformers>
+                            <artifactSet>
+                            </artifactSet>
+                            <outputFile>${project.build.directory}/${fat.jar.name}.jar
+                            </outputFile>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
